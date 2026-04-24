@@ -83,6 +83,7 @@ import { MOCK_ARTICLES, MOCK_EVENTS, MOCK_AUTHORS, MOCK_CULTURE } from './consta
 import { Article, Comment, Event, SiteSettings, Subscriber, MediaAsset, Poll, Classified, LiveBlog, AppNotification, SupportMessage, Author, WebTV, CulturePost, AdminActivityLog } from './types';
 import { cn, optimizeImage, getYoutubeId, safeFormatDate } from './lib/utils';
 import { AdminLogin, AdminDashboard, AdminEditor, ExportModal, PollEditor, LiveBlogEditor, WebTVEditor, ClassifiedEditor, CulturePostEditor, AuthorEditor } from './components/Admin';
+import { ArticleSkeleton, Skeleton } from './components/Skeleton';
 import { PulseSidebar } from './components/PulseSidebar';
 import { AuthModal } from './components/AuthModal';
 import { AuthorProfile } from './components/AuthorProfile';
@@ -128,15 +129,26 @@ const TopNotice = ({ message, onClose }: { message: string, onClose: () => void 
   <motion.div 
     initial={{ y: -100 }}
     animate={{ y: 0 }}
-    className="bg-primary text-slate-950 py-2 px-4 relative z-[200] flex items-center justify-center gap-4 text-[10px] font-black uppercase tracking-[0.2em]"
+    exit={{ y: -100 }}
+    className="bg-primary text-slate-950 py-2.5 px-4 relative z-[200] flex items-center justify-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] shadow-lg"
   >
     <div className="flex items-center gap-2">
-      <TrendingUp size={12} className="animate-pulse" />
+      <motion.div
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <TrendingUp size={12} />
+      </motion.div>
       <span>{message}</span>
     </div>
-    <button onClick={onClose} className="absolute right-4 hover:scale-110 transition-transform">
+    <motion.button 
+      whileHover={{ scale: 1.2 }}
+      whileTap={{ scale: 0.9 }}
+      onClick={onClose} 
+      className="absolute right-4 text-slate-900/40 hover:text-slate-900 transition-colors"
+    >
       <X size={14} />
-    </button>
+    </motion.button>
   </motion.div>
 );
 
@@ -306,26 +318,28 @@ const playNotificationSound = (type: 'info' | 'urgent' | 'message' | 'payment' =
 
 const Badge = ({ children, category, icon }: { children: React.ReactNode; category?: string; icon?: string }) => {
   const colors: Record<string, string> = {
-    'Afrique': 'bg-orange-500 text-white',
-    'Monde': 'bg-blue-500 text-white',
-    'Tech': 'bg-slate-500 text-white',
-    'Économie': 'bg-emerald-600 text-white',
-    'Politique': 'bg-red-600 text-white',
-    'Culture': 'bg-amber-500 text-white',
-    'Urgent': 'bg-red-700 text-white animate-pulse',
-    'Science': 'bg-purple-600 text-white',
-    'Santé': 'bg-teal-500 text-white',
-    'Sport': 'bg-indigo-600 text-white',
+    'Afrique': 'bg-orange-500 text-white shadow-orange-500/20',
+    'Monde': 'bg-blue-500 text-white shadow-blue-500/20',
+    'Tech': 'bg-slate-500 text-white shadow-slate-500/20',
+    'Économie': 'bg-emerald-600 text-white shadow-emerald-600/20',
+    'Politique': 'bg-red-600 text-white shadow-red-600/20',
+    'Culture': 'bg-amber-500 text-white shadow-amber-500/20',
+    'Urgent': 'bg-red-700 text-white animate-pulse shadow-red-700/20',
+    'Science': 'bg-purple-600 text-white shadow-purple-600/20',
+    'Santé': 'bg-teal-500 text-white shadow-teal-500/20',
+    'Sport': 'bg-indigo-600 text-white shadow-indigo-600/20',
   };
 
   return (
-    <span className={cn(
-      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit relative overflow-hidden",
-      category ? colors[category] || 'bg-slate-200 text-slate-700' : 'bg-slate-200 text-slate-700'
+    <motion.span 
+      whileHover={{ scale: 1.05 }}
+      className={cn(
+      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit relative overflow-hidden shadow-sm backdrop-blur-[2px] border border-white/10",
+      category ? colors[category] || 'bg-slate-200 text-slate-700 shadow-slate-200/20' : 'bg-slate-200 text-slate-700 shadow-slate-200/20'
     )}>
-      {icon && <span>{icon}</span>}
+      {icon && <span className="text-xs">{icon}</span>}
       {children}
-    </span>
+    </motion.span>
   );
 };const HeroSlideshow = ({ 
   articles, 
@@ -489,45 +503,47 @@ const TrendingSection = ({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {articles.map((article, idx) => (
-          <div 
+          <motion.div 
             key={article.id} 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: idx * 0.1 }}
+            whileHover={{ x: 5 }}
             onClick={() => onArticleClick(article)}
-            className="flex gap-4 items-start cursor-pointer group relative"
+            className="flex gap-4 items-start cursor-pointer group relative bg-white/50 p-2 rounded-2xl hover:bg-white transition-colors"
           >
-            <span className="text-4xl font-black text-slate-200 group-hover:text-primary transition-colors">
-              0{idx + 1}
+            <span className="text-4xl font-black text-slate-100 group-hover:text-primary transition-colors leading-none">
+              {(idx + 1).toString().padStart(2, '0')}
             </span>
-            <div className="space-y-1 flex-1">
+            <div className="space-y-2 flex-1">
               <div className="flex justify-between items-start">
                 <Badge category={article.category} icon={categoryIcons?.[article.category]}>{article.category}</Badge>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onBookmark(article.id, e); }}
                   className={cn(
-                    "transition-colors",
+                    "transition-all hover:scale-110",
                     bookmarkedIds.has(article.id) ? "text-primary" : "text-slate-300 hover:text-primary"
                   )}
                 >
                   <Bookmark size={14} fill={bookmarkedIds.has(article.id) ? "currentColor" : "none"} />
                 </button>
               </div>
-              <h3 className="font-display font-bold text-slate-900 group-hover:text-primary transition-colors leading-snug line-clamp-2">
+              <h3 className="font-display font-black tracking-tight text-slate-900 group-hover:text-primary transition-colors leading-tight line-clamp-2 uppercase italic text-sm">
                 {article.title}
               </h3>
-              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                 <span 
                   onClick={(e) => { e.stopPropagation(); onAuthorClick?.(article.author); }}
-                  className="hover:text-primary cursor-pointer transition-colors font-bold"
+                  className="hover:text-primary cursor-pointer transition-colors"
                 >
                   {article.author}
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-0.5"><Eye size={10} /> {article.views}</span>
-                {article.commentscount !== undefined && article.commentscount > 0 && (
-                  <span className="flex items-center gap-0.5"><MessageSquare size={10} /> {article.commentscount}</span>
-                )}
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </section>
@@ -552,6 +568,14 @@ const ArticleCard = ({ article, onClick, variant = 'horizontal', onBookmark, isB
   const y = useTransform(scrollYProgress, [0, 1], ["-10%", "10%"]);
 
   if (!article) return null;
+
+  const cardMotionProps = {
+    initial: { opacity: 0, y: 30 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: "-50px" },
+    transition: { type: "spring", stiffness: 100, damping: 20 },
+    whileHover: { y: -10 }
+  };
 
   if (variant === 'hero') {
     return (
@@ -4434,7 +4458,8 @@ export default function App() {
       {/* Header / Navbar */}
       {!['admin', 'admin-login'].includes(currentView) && (
       <header className={cn(
-        "sticky top-0 z-50 transition-colors bg-white border-b border-slate-200"
+        "sticky top-0 z-50 transition-all duration-300",
+        "bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm"
       )}>
         <div className="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -4504,11 +4529,13 @@ export default function App() {
                    </button>
                  )}
                  <div className="relative">
-                    <button 
+                    <motion.button 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => setShowNotificationCenter(!showNotificationCenter)}
                       className={cn(
                         "p-2 md:p-3 rounded-full transition-all relative group",
-                        showNotificationCenter ? "bg-primary text-white" : "hover:bg-slate-100 text-slate-500"
+                        showNotificationCenter ? "bg-primary text-white shadow-lg shadow-primary/20" : "hover:bg-slate-100 text-slate-500"
                       )}
                     >
                       <Bell size={20} className="md:w-[22px] md:h-[22px]" />
@@ -4517,7 +4544,7 @@ export default function App() {
                           {unreadNotifsCount}
                         </span>
                       )}
-                    </button>
+                    </motion.button>
                     <AnimatePresence>
                       {showNotificationCenter && (
                         <NotificationCenter 
@@ -4600,9 +4627,15 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-20 space-y-4"
+              className="space-y-12 py-10"
             >
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <ArticleSkeleton variant="hero" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <ArticleSkeleton />
+                <ArticleSkeleton />
+                <ArticleSkeleton />
+                <ArticleSkeleton />
+              </div>
             </motion.div>
           ) : currentView === 'home' ? (
             <motion.div 
@@ -4616,23 +4649,25 @@ export default function App() {
               {/* Category Tabs Mobile */}
               <div className="lg:hidden flex flex-nowrap gap-2 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 touch-pan-x scroll-smooth">
                 {categories.map(cat => (
-                  <button
+                  <motion.button
                     key={cat}
                     id={`cat-tab-${cat}`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       handleCategoryClick(cat);
                       document.getElementById(`cat-tab-${cat}`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                     }}
                     className={cn(
-                      "px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 shadow-sm flex items-center gap-2",
+                      "px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all shrink-0 shadow-sm flex items-center gap-2 border",
                       activeCategory === cat 
-                        ? "bg-primary text-white shadow-primary/20" 
-                        : "bg-white text-slate-500 border border-slate-200"
+                        ? "bg-primary text-white shadow-primary/20 border-primary" 
+                        : "bg-white text-slate-500 border-slate-200"
                     )}
                   >
-                    <span>{siteSettings?.categories_icons?.[cat] || '📰'}</span>
+                    <span className="text-sm">{siteSettings?.categories_icons?.[cat] || '📰'}</span>
                     <span>{cat}</span>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
 
@@ -4763,11 +4798,11 @@ export default function App() {
                 
                 {/* Infinite Scroll Sentinel */}
                 {displayedArticles.length < filteredArticles.length && (
-                  <div ref={loadingRef} className="flex justify-center py-10">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Chargement plus d'articles...</span>
-                    </div>
+                  <div ref={loadingRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 py-10">
+                    <ArticleSkeleton />
+                    <ArticleSkeleton className="hidden md:block" />
+                    <ArticleSkeleton className="hidden lg:block" />
+                    <ArticleSkeleton className="hidden xl:block" />
                   </div>
                 )}
                 
@@ -5433,13 +5468,19 @@ export default function App() {
               />
             </motion.div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-40 space-y-6">
-              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-xl"></div>
-              <div className="text-center space-y-2">
-                <p className="text-xl font-bold text-slate-800">Chargement de l'article...</p>
-                <p className="text-sm text-slate-400 max-w-xs mx-auto font-medium">Nous récupérons le contenu pour vous. Si cela prend trop de temps, vérifiez votre connexion.</p>
+            <div className="space-y-12 py-10 max-w-4xl mx-auto">
+              <ArticleSkeleton variant="hero" />
+              <div className="space-y-6">
+                <Skeleton className="w-1/3 h-8 rounded-lg" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <ArticleSkeleton />
+                  <ArticleSkeleton />
+                </div>
               </div>
-              <button onClick={goHome} className="bg-slate-100 text-slate-600 px-6 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+              <button 
+                onClick={goHome} 
+                className="mx-auto block bg-slate-100 text-slate-600 px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 shadow-sm"
+              >
                 Retour à l'accueil
               </button>
             </div>
@@ -5565,13 +5606,10 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* Infinite Scroll Sentinel for Search */}
                   {displayedSearchResults.length < searchResults.length && (
-                    <div ref={searchLoadingRef} className="flex justify-center py-10">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recherche de plus de résultats...</span>
-                      </div>
+                    <div ref={searchLoadingRef} className="grid grid-cols-1 md:grid-cols-2 gap-6 py-10">
+                      <ArticleSkeleton />
+                      <ArticleSkeleton />
                     </div>
                   )}
                 </div>
