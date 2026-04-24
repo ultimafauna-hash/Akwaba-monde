@@ -57,6 +57,7 @@ export interface Comment {
   likes: number;
   likedby?: string[]; // Array of user IDs who liked
   articleid: string;
+  parentid?: string; // For replies
   reportedby?: string[]; // Array of user IDs who reported
   isreported?: boolean;
 }

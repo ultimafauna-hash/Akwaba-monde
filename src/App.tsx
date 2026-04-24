@@ -1201,7 +1201,9 @@ const ExchangeRatesWidget = ({ rates }: { rates: Record<string, number> }) => (
       {Object.entries(rates).map(([pair, rate]) => (
         <div key={pair} className="space-y-1">
           <div className="text-[10px] font-bold text-slate-400">{pair}</div>
-          <div className="text-lg font-black tracking-tight">{rate.toFixed(2)}</div>
+          <div className="text-lg font-black tracking-tight">
+            {typeof rate === 'number' ? rate.toFixed(2) : Number(rate).toFixed(2)}
+          </div>
         </div>
       ))}
     </div>
@@ -2533,10 +2535,10 @@ export default function App() {
         const data = await res.json();
         if (data && data.rates && data.rates.XOF) {
           setExchangeRates({
-            'EUR/XOF': data.rates.XOF.toFixed(2),
-            'USD/XOF': (data.rates.XOF / data.rates.USD).toFixed(2),
-            'GBP/XOF': (data.rates.XOF / data.rates.GBP).toFixed(2),
-            'NGN/XOF': (data.rates.XOF / data.rates.NGN).toFixed(2)
+            'EUR/XOF': data.rates.XOF,
+            'USD/XOF': data.rates.XOF / data.rates.USD,
+            'GBP/XOF': data.rates.XOF / data.rates.GBP,
+            'NGN/XOF': data.rates.XOF / data.rates.NGN
           });
         }
       } catch (e) {
@@ -2817,28 +2819,29 @@ export default function App() {
     } else if (path.startsWith('/article/')) {
       const slug = parts[1];
       if (slug) {
+        // Always switch to article view when path matches
+        setCurrentView('article');
         const article = adminArticles.find(a => (a.slug || a.id) === slug);
         if (article) {
           setSelectedArticle(article);
-          setCurrentView('article');
         }
       }
     } else if (path.startsWith('/evenement/')) {
       const slug = parts[1];
       if (slug) {
+        setCurrentView('event');
         const event = adminEvents.find(e => (e.slug || e.id) === slug);
         if (event) {
           setSelectedEvent(event);
-          setCurrentView('event');
         }
       }
     } else if (path.startsWith('/culture/')) {
       const slug = parts[1];
       if (slug) {
+        setCurrentView('culture-detail');
         const culture = adminCulturePosts.find(c => (c.slug || c.id) === slug);
         if (culture) {
           setSelectedCulturePost(culture);
-          setCurrentView('culture-detail');
         } else {
           setCurrentView('all-culture');
         }
@@ -3661,7 +3664,8 @@ export default function App() {
       content: newCommentText,
       likes: 0,
       likedby: [],
-      articleid: articleId
+      articleid: articleId,
+      parentid: parentCommentId
     };
 
     try {
@@ -3807,6 +3811,28 @@ export default function App() {
     localStorage.setItem('cookie-consent', accepted ? 'accepted' : 'declined');
     setShowCookieBanner(false);
   };
+
+  useEffect(() => {
+    if (isCloudLoaded) {
+      // Group comments by articleId
+      const mapping: Record<string, Comment[]> = {};
+      allComments.forEach(c => {
+        if (!mapping[c.articleid]) mapping[c.articleid] = [];
+        mapping[c.articleid].push(c);
+      });
+      setArticleComments(mapping);
+    }
+  }, [allComments, isCloudLoaded]);
+
+  useEffect(() => {
+    if (isCloudLoaded && adminArticles.length > 0) {
+      const likesMap: Record<string, number> = {};
+      adminArticles.forEach(a => {
+        likesMap[a.id] = a.likes || 0;
+      });
+      setArticleLikes(likesMap);
+    }
+  }, [adminArticles, isCloudLoaded]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -4885,27 +4911,28 @@ export default function App() {
               isFollowing={false}
               onFollow={() => {}}
             />
-          ) : currentView === 'article' && selectedArticle ? (
-            <motion.div 
-              key="article"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="max-w-4xl mx-auto space-y-8"
-            >
-              <ShareFloatingButtons title={selectedArticle.title} url={window.location.href} />
-              
-              <div className="space-y-4 text-center">
-                <Breadcrumb items={[
-                  { label: "Accueil", onClick: goHome },
-                  { label: selectedArticle.category || 'Actualité', onClick: () => handleCategoryClick(selectedArticle.category) },
-                  { label: "Lecture", active: true }
-                ]} />
+          ) : currentView === 'article' ? (
+            selectedArticle ? (
+              <motion.div 
+                key="article"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4 }}
+                className="max-w-4xl mx-auto space-y-8"
+              >
+                <ShareFloatingButtons title={selectedArticle.title} url={window.location.href} />
                 
-                <h1 className="text-2xl md:text-5xl font-display font-black leading-[1.1] tracking-tight text-slate-900 border-b-4 border-primary/10 pb-6 mb-6">
-                  {selectedArticle.title || 'Sans titre'}
-                </h1>
+                <div className="space-y-4 text-center">
+                  <Breadcrumb items={[
+                    { label: "Accueil", onClick: goHome },
+                    { label: selectedArticle.category || 'Actualité', onClick: () => handleCategoryClick(selectedArticle.category) },
+                    { label: "Lecture", active: true }
+                  ]} />
+                  
+                  <h1 className="text-2xl md:text-5xl font-display font-black leading-[1.1] tracking-tight text-slate-900 border-b-4 border-primary/10 pb-6 mb-6">
+                    {selectedArticle.title || 'Sans titre'}
+                  </h1>
                 {selectedArticle.tags && Array.isArray(selectedArticle.tags) && selectedArticle.tags.length > 0 && (
                   <div className="flex flex-wrap justify-center gap-2 mt-2">
                     {selectedArticle.tags.map(tag => (
@@ -5225,7 +5252,68 @@ export default function App() {
                       {/* Recursive Comment Component */}
                       {(() => {
                         const renderComments = (comments: Comment[], isReply = false) => {
-                          if (comments.length === 0 && !isReply) {
+                          const topLevelComments = comments.filter(c => !c.parentid);
+                          const replies = comments.filter(c => c.parentid);
+
+                          const processComment = (comment: Comment, depth = 0) => {
+                            const commentReplies = replies.filter(r => r.parentid === comment.id);
+                            
+                            return (
+                              <div key={comment.id} className={cn("space-y-4", depth > 0 && "ml-4 md:ml-10 mt-4 border-l-2 border-slate-100 pl-4")}>
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="flex gap-4"
+                                >
+                                  <div className={cn(
+                                    "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold shrink-0",
+                                    depth > 0 ? "bg-slate-100 text-slate-400 text-xs" : "bg-primary/10 text-primary"
+                                  )}>
+                                    {comment.username[0].toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-bold text-sm">{comment.username}</span>
+                                      <span className="text-[10px] text-slate-400">
+                                        {safeFormatDate(comment.date, 'dd MMM yyyy HH:mm')}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-slate-600 leading-relaxed">{comment.content}</p>
+                                    <div className="flex items-center gap-4">
+                                      <button 
+                                        onClick={() => {
+                                          setReplyingTo({ commentId: comment.id, username: comment.username });
+                                          document.getElementById('comment-form')?.scrollIntoView({ behavior: 'smooth' });
+                                        }}
+                                        className="text-xs font-bold text-primary hover:underline"
+                                      >
+                                        Répondre
+                                      </button>
+                                      <button 
+                                        onClick={() => handleLikeComment(selectedArticle.id, comment.id)}
+                                        className="text-xs font-bold text-slate-400 flex items-center gap-1 hover:text-red-500 transition-colors"
+                                      >
+                                        <Heart size={12} fill={comment.likedby?.includes(currentUser?.uid || '') ? "currentColor" : "none"} /> {comment.likes}
+                                      </button>
+                                      <button 
+                                        onClick={() => handleReportComment(comment.id)}
+                                        className="text-[10px] font-bold text-slate-300 hover:text-red-400 transition-colors uppercase tracking-widest flex items-center gap-1"
+                                      >
+                                        <Flag size={10} /> Signaler
+                                      </button>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                                {commentReplies.length > 0 && (
+                                  <div className="space-y-4">
+                                    {commentReplies.map(reply => processComment(reply, depth + 1))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          };
+
+                          if (topLevelComments.length === 0) {
                             return (
                               <div className="flex gap-4 opacity-50">
                                 <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0" />
@@ -5235,67 +5323,12 @@ export default function App() {
                                     <span className="text-xs text-slate-400">Exemple</span>
                                   </div>
                                   <p className="text-slate-600">Analyse très pertinente. Le potentiel est là, il manque juste l'accompagnement politique.</p>
-                                  <button 
-                                    onClick={() => {
-                                      setReplyingTo({ commentId: 'mock', username: 'Jean-Marc Koffi' });
-                                      document.getElementById('comment-form')?.scrollIntoView({ behavior: 'smooth' });
-                                    }}
-                                    className="text-xs font-bold text-primary hover:underline"
-                                  >
-                                    Répondre
-                                  </button>
                                 </div>
                               </div>
                             );
                           }
-                          return comments.map((comment) => (
-                            <div key={comment.id} className={cn("space-y-4", isReply && "ml-10 mt-4")}>
-                              <motion.div 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="flex gap-4"
-                              >
-                                <div className={cn(
-                                  "w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0",
-                                  isReply ? "bg-slate-100 text-slate-400 w-8 h-8 text-xs" : "bg-primary/10 text-primary"
-                                )}>
-                                  {comment.username[0].toUpperCase()}
-                                </div>
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-bold text-sm">{comment.username}</span>
-                                    <span className="text-[10px] text-slate-400">
-                                      {safeFormatDate(comment.date, 'dd MMM yyyy HH:mm')}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-slate-600 leading-relaxed">{comment.content}</p>
-                                  <div className="flex items-center gap-4">
-                                    <button 
-                                      onClick={() => {
-                                        setReplyingTo({ commentId: comment.id, username: comment.username });
-                                        document.getElementById('comment-form')?.scrollIntoView({ behavior: 'smooth' });
-                                      }}
-                                      className="text-xs font-bold text-primary hover:underline"
-                                    >
-                                      Répondre
-                                    </button>
-                                    <button 
-                                      onClick={() => handleLikeComment(selectedArticle.id, comment.id)}
-                                      className="text-xs font-bold text-slate-400 flex items-center gap-1 hover:text-red-500 transition-colors"
-                                    >
-                                      <Heart size={12} /> {comment.likes}
-                                    </button>
-                                    <button 
-                                      onClick={() => handleReportComment(comment.id)}
-                                      className="text-[10px] font-bold text-slate-300 hover:text-red-400 transition-colors uppercase tracking-widest flex items-center gap-1"
-                                    >
-                                      <Flag size={10} /> Signaler
-                                    </button>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            </div>
-                          ));
+
+                          return topLevelComments.map(comment => processComment(comment));
                         };
                         return renderComments(articleComments[selectedArticle.id] || []);
                       })()}
@@ -5423,7 +5456,19 @@ export default function App() {
                 categoryIcons={siteSettings?.categories_icons}
               />
             </motion.div>
-          ) : currentView === 'search' ? (
+          ) : (
+            <div className="flex flex-col items-center justify-center py-40 space-y-6">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-xl"></div>
+              <div className="text-center space-y-2">
+                <p className="text-xl font-bold text-slate-800">Chargement de l'article...</p>
+                <p className="text-sm text-slate-400 max-w-xs mx-auto font-medium">Nous récupérons le contenu pour vous. Si cela prend trop de temps, vérifiez votre connexion.</p>
+              </div>
+              <button onClick={goHome} className="bg-slate-100 text-slate-600 px-6 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                Retour à l'accueil
+              </button>
+            </div>
+          )
+        ) : currentView === 'search' ? (
             <motion.div 
               key="search"
               initial={{ opacity: 0, y: 20 }}

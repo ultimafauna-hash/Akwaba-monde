@@ -158,7 +158,7 @@ export const SupabaseService = {
     const finalHistory = [newEntry, ...filteredHistory];
 
     await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update({ history: finalHistory })
       .eq('uid', userId);
   },

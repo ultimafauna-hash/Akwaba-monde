@@ -148,6 +148,19 @@ CREATE TABLE IF NOT EXISTS public.comments (
     articleid UUID REFERENCES public.articles(id) ON DELETE CASCADE,
     isreported BOOLEAN DEFAULT false,
     reportedby UUID[] DEFAULT '{}',
+    parentid UUID REFERENCES public.comments(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Auteurs
+CREATE TABLE IF NOT EXISTS public.authors (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    bio TEXT,
+    image TEXT,
+    socials JSONB DEFAULT '{}'::jsonb,
+    specialties TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -350,6 +363,51 @@ CREATE TABLE IF NOT EXISTS public.web_tv (
     views INTEGER DEFAULT 0,
     ispremium BOOLEAN DEFAULT false
 );
+
+
+-- 5. TRIGGERS D'AUTHENTIFICATION
+-- Création automatique du profil lors de l'inscription
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (uid, email, displayname, role)
+  VALUES (new.id, new.email, split_part(new.email, '@', 1), 'user');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 6. POLITIQUES DE SÉCURITÉ (RLS)
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscribers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+
+-- Profils: Visibles par tous, modifiables par le propriétaire ou admin
+CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = uid);
+CREATE POLICY "Admins can update all profiles" ON public.profiles FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE uid = auth.uid() AND role = 'admin')
+);
+
+-- Articles: Visibles si publiés, modifiables par admin/editor
+CREATE POLICY "Published articles are viewable by everyone" ON public.articles FOR SELECT USING (status = 'published' OR EXISTS (SELECT 1 FROM public.profiles WHERE uid = auth.uid() AND role IN ('admin', 'editor')));
+CREATE POLICY "Admins/Editors can modify articles" ON public.articles FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE uid = auth.uid() AND role IN ('admin', 'editor')));
+
+-- Commentaires: Visibles par tous, modifiables par l'auteur ou admin
+CREATE POLICY "Comments are viewable by everyone" ON public.comments FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can post comments" ON public.comments FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Users can delete own comments" ON public.comments FOR DELETE USING (auth.uid() = userid);
+CREATE POLICY "Admins can delete all comments" ON public.comments FOR DELETE USING (EXISTS (SELECT 1 FROM public.profiles WHERE uid = auth.uid() AND role = 'admin'));
+
+-- Paramètres: Visibles par tous, modifiables par admin
+CREATE POLICY "Settings are viewable by everyone" ON public.settings FOR SELECT USING (true);
+CREATE POLICY "Only admins can update settings" ON public.settings FOR UPDATE USING (EXISTS (SELECT 1 FROM public.profiles WHERE uid = auth.uid() AND role = 'admin'));
 
 -- 3. INDEXATION POUR RECHERCHE
 CREATE INDEX IF NOT EXISTS articles_title_idx ON public.articles USING gin (to_tsvector('french', title));
