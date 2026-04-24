@@ -105,30 +105,6 @@ type FirebaseUser = any;
 
 // --- Components ---
 
-const BackToTop = () => {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const handleScroll = () => setVisible(window.scrollY > 500);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  return (
-    <AnimatePresence>
-      {visible && (
-        <motion.button 
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.5 }}
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-24 right-6 z-[90] p-4 bg-primary text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all lg:bottom-10"
-        >
-          <ArrowUp size={24} />
-        </motion.button>
-      )}
-    </AnimatePresence>
-  );
-};
 
 const WeatherWidget = () => {
   const [date, setDate] = useState(new Date());
@@ -1871,7 +1847,7 @@ const SupportChatWidget = ({ user, isDarkMode }: { user: FirebaseUser | null, is
   };
 
   return (
-    <div className="fixed bottom-20 lg:bottom-6 right-6 z-[200] flex flex-col items-end gap-4">
+    <div className="fixed bottom-20 right-6 z-[200] flex flex-col items-end gap-4">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -6324,7 +6300,6 @@ Dernière mise à jour : Avril 2026
       {!['admin', 'admin-login'].includes(currentView) && (
         <Footer onNavigate={navigateTo} categories={categories} />
       )}
-      <BackToTop />
 
       {/* Mobile Bottom Nav */}
       {!['admin', 'admin-login'].includes(currentView) && (

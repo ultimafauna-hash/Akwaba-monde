@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { History, Map as MapIcon, Trophy, Globe, X, Sparkles, Activity, Mail } from 'lucide-react';
+import { History, Map as MapIcon, Trophy, Globe, X, Sparkles, Activity, Mail, Plus } from 'lucide-react';
 import { HistoryMini } from './HistoryMini';
 import { MapMini } from './MapMini';
 import { QuizMini } from './QuizMini';
@@ -10,43 +10,83 @@ import { cn } from '../lib/utils';
 
 export const PulseSidebar = () => {
   const [activeFeature, setActiveFeature] = useState<'history' | 'map' | 'quiz' | 'diaspora' | 'newsletter' | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const features = [
-    { id: 'history', icon: History, label: "L'Histoire", color: "bg-slate-900", text: "Ce jour dans l'histoire" },
-    { id: 'map', icon: MapIcon, label: "La Carte", color: "bg-amber-500", text: "Carte interactive" },
-    { id: 'quiz', icon: Trophy, label: "Le Quiz", color: "bg-emerald-600", text: "Défiez vos connaissances" },
-    { id: 'diaspora', icon: Globe, label: "Diaspora", color: "bg-indigo-600", text: "Sucess Stories" },
-    { id: 'newsletter', icon: Mail, label: "Newsletter", color: "bg-primary", text: "Abonnez-vous à l'info" },
+    { id: 'history', icon: History, label: "L'Histoire", color: "text-slate-900", iconBg: "bg-slate-100", text: "Ce jour dans l'histoire" },
+    { id: 'map', icon: MapIcon, label: "La Carte", color: "text-amber-500", iconBg: "bg-amber-50", text: "Carte interactive" },
+    { id: 'quiz', icon: Trophy, label: "Le Quiz", color: "text-emerald-600", iconBg: "bg-emerald-50", text: "Défiez vos connaissances" },
+    { id: 'diaspora', icon: Globe, label: "Diaspora", color: "text-indigo-600", iconBg: "bg-indigo-50", text: "Sucess Stories" },
+    { id: 'newsletter', icon: Mail, label: "Newsletter", color: "text-primary", iconBg: "bg-primary/5", text: "Abonnez-vous à l'info" },
   ];
+
+  const handleOpenFeature = (id: any) => {
+    setActiveFeature(id);
+    setIsMenuOpen(false);
+  };
 
   return (
     <>
-      {/* Floating Buttons */}
-      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-[100] flex flex-col gap-3 pointer-events-none">
-        {features.map((f, i) => (
-          <motion.div
-            key={f.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 + i * 0.1 }}
-            className="pointer-events-auto"
-          >
-            <button
-              onClick={() => setActiveFeature(f.id as any)}
-              className={cn(
-                "w-12 h-12 rounded-[20px] flex items-center justify-center text-white shadow-xl hover:scale-110 active:scale-95 transition-all group relative",
-                f.color
-              )}
-              title={f.text}
-            >
-              <f.icon size={20} />
-              <div className="absolute right-full mr-4 bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-2xl border border-white/10 hidden lg:block">
-                 {f.text}
-                 <div className="absolute top-1/2 -translate-y-1/2 -right-1.5 border-4 border-transparent border-l-slate-900" />
-              </div>
-            </button>
-          </motion.div>
-        ))}
+      {/* Floating Action Button & Popup Menu */}
+      <div className="fixed right-6 bottom-40 z-[210]">
+        <AnimatePresence>
+          {isMenuOpen && (
+            <>
+              {/* Overlay */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-slate-900/20 backdrop-blur-[2px] z-[-1]"
+                onClick={() => setIsMenuOpen(false)}
+              />
+
+              {/* Popup Menu */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20, x: 0 }}
+                animate={{ opacity: 1, scale: 1, y: -20, x: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20, x: 0 }}
+                className="absolute bottom-full right-0 mb-4 bg-white rounded-[24px] shadow-2xl border border-slate-100 p-2 min-w-[220px] overflow-hidden"
+              >
+                <div className="flex flex-col">
+                  {features.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => handleOpenFeature(f.id)}
+                      className="flex items-center gap-4 w-full p-3.5 hover:bg-slate-50 rounded-[18px] transition-all group text-left"
+                    >
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 shadow-sm",
+                        f.iconBg,
+                        f.color
+                      )}>
+                        <f.icon size={18} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-900">{f.label}</span>
+                        <span className="text-[9px] font-bold text-slate-400 capitalize">{f.text.split(' ').slice(0, 3).join(' ')}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Main FAB */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className={cn(
+            "w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all relative z-10",
+            isMenuOpen ? "bg-slate-900 rotate-45" : "bg-[#1FA463]"
+          )}
+        >
+          <div className="absolute inset-0 bg-[#1FA463] rounded-full animate-pulse opacity-40 -z-10" />
+          {isMenuOpen ? <X size={24} /> : <Plus size={28} />}
+        </motion.button>
       </div>
 
       <AnimatePresence>
